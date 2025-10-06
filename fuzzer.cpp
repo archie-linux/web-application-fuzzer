@@ -35,8 +35,8 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     return size * nmemb;
 }
 
-// Fuzzing function
-void fuzz(const std::string& url, const std::vector<std::string>& params, const std::string& payload, bool use_post) {
+// Fuzzing function with proxy support
+void fuzz(const std::string& url, const std::vector<std::string>& params, const std::string& payload, bool use_post, const std::string& proxy) {
     CURL* curl;
     CURLcode res;
     std::string response;
@@ -78,6 +78,12 @@ void fuzz(const std::string& url, const std::vector<std::string>& params, const 
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data.c_str());
         }
 
+        // Set proxy if provided
+        if (!proxy.empty()) {
+            curl_easy_setopt(curl, CURLOPT_PROXY, proxy.c_str());
+            std::cout << "[*] Using Proxy: " << proxy << std::endl;
+        }
+
         res = curl_easy_perform(curl);
         if (res == CURLE_OK) {
             long response_code;
@@ -97,10 +103,10 @@ void fuzz(const std::string& url, const std::vector<std::string>& params, const 
 }
 
 // Start fuzzing in parallel
-void start_fuzzing(const std::string& url, const std::vector<std::string>& params, bool use_post) {
+void start_fuzzing(const std::string& url, const std::vector<std::string>& params, bool use_post, const std::string& proxy) {
     std::vector<std::thread> threads;
     for (const auto& payload : payloads) {
-        threads.emplace_back(fuzz, std::ref(url), std::ref(params), std::ref(payload), use_post);
+        threads.emplace_back(fuzz, std::ref(url), std::ref(params), std::ref(payload), use_post, std::ref(proxy));
     }
     for (auto& thread : threads) {
         thread.join();
@@ -109,19 +115,23 @@ void start_fuzzing(const std::string& url, const std::vector<std::string>& param
 
 int main(int argc, char* argv[]) {
     if (argc < 3) {
-        std::cerr << "Usage: ./fuzzer <URL> <param1> [param2] ... [--post]" << std::endl;
+        std::cerr << "Usage: ./fuzzer <URL> <param1> [param2] ... [--post] [--proxy <proxy_url>]" << std::endl;
         return 1;
     }
 
     std::string target_url = argv[1];
     std::vector<std::string> target_params;
     bool use_post = false;
+    std::string proxy;
 
     for (int i = 2; i < argc; ++i) {
-        if (std::string(argv[i]) == "--post") {
+        std::string arg = argv[i];
+        if (arg == "--post") {
             use_post = true;
+        } else if (arg == "--proxy" && i + 1 < argc) {
+            proxy = argv[++i];
         } else {
-            target_params.push_back(argv[i]);
+            target_params.push_back(arg);
         }
     }
 
@@ -130,6 +140,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    start_fuzzing(target_url, target_params, use_post);
+    start_fuzzing(target_url, target_params, use_post, proxy);
     return 0;
 }
