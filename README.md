@@ -89,5 +89,4 @@ Serving HTTP on :: port 8000 (http://[::]:8000/) ...
 </pre>
 
 
-- <a href="https://github.com/anpa6841/web-application-fuzzer/blob/master/FuzzerProxyDemo.mov">Proxy Demo</a>
-
+### [Proxy Demo](https://github.com/user-attachments/assets/da5cf73a-799a-4207-b208-c0cc54c6b4aa)
